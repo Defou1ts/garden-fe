@@ -15,7 +15,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  const [role] = useState<"USER" | "ADMIN">("ADMIN"); // поменяй на 'USER' для проверки
+  const [role] = useState<"USER" | "ADMIN">("USER"); // поменяй на 'USER' для проверки
 
   // Для каждого таба определяем, показывать или нет его для данной роли
   const isUser = role === "USER";
