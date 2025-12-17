@@ -10,8 +10,8 @@ export const useLogout = () => {
         await authApi.logout(refreshToken);
       }
     },
-    onSuccess: () => {
-      tokenStorage.clear();
+    onSuccess: async () => {
+      await tokenStorage.clear();
     },
   });
 };

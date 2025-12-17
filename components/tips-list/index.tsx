@@ -1,31 +1,26 @@
+import type { Advice } from "@/api/advice.types";
 import { Typography } from "@/shared/ui/Typography";
 import { Image } from "expo-image";
 import { StyleSheet, View } from "react-native";
 
-const tips = [
-  {
-    imageSrc: require("@/assets/images/blueberry.png"),
-    text: "Как правильно вырастить большую смородину?",
-  },
-  {
-    imageSrc: require("@/assets/images/strawberry.png"),
-    text: "Чем подкормить малину весной. 5 Проверенных удобрений",
-  },
-  {
-    imageSrc: require("@/assets/images/sun.png"),
-    text: "Подкормите весной малину и будет вам счастье",
-  },
-];
+type TipsListProps = {
+  advices?: Advice[];
+  isLoading?: boolean;
+};
 
-export const TipsList = () => {
+export const TipsList = ({ advices = [], isLoading }: TipsListProps) => {
   return (
     <View style={styles.wrapper}>
-      {tips.map((tip) => (
-        <View key={tip.text} style={styles.cardWrapper}>
-          <Image style={styles.image} source={tip.imageSrc} />
-          <Typography type="default">{tip.text}</Typography>
-        </View>
-      ))}
+      {isLoading ? (
+        <Typography type="default">Загружаем советы...</Typography>
+      ) : (
+        advices.map((advice) => (
+          <View key={advice.id} style={styles.cardWrapper}>
+            <Image style={styles.image} source={advice.photoUrl} />
+            <Typography type="default">{advice.title}</Typography>
+          </View>
+        ))
+      )}
     </View>
   );
 };

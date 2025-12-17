@@ -1,3 +1,4 @@
+import type { CalendarTask } from "@/api/calendar.types";
 import { ArrowDownIcon } from "@/assets/icons/ArrowDownIcon";
 import { theme } from "@/constants/theme";
 import { Typography } from "@/shared/ui/Typography";
@@ -13,9 +14,12 @@ import {
   View,
 } from "react-native";
 
-const deals = ["Сделать отчёт", "Позвонить клиенту", "Проверить почту"];
+type TodayDealsProps = {
+  tasks?: CalendarTask[];
+  isLoading?: boolean;
+};
 
-export const TodayDeals = () => {
+export const TodayDeals = ({ tasks = [], isLoading }: TodayDealsProps) => {
   const [expanded, setExpanded] = useState(false);
 
   const animation = useRef(new Animated.Value(0)).current; // 0 - закрыт, 1 - открыт
@@ -51,15 +55,21 @@ export const TodayDeals = () => {
   // --- Высота анимированного контейнера ---
   const height = animation.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, deals.length * 40], // каждый элемент ~40px
+    outputRange: [0, tasks.length * 40], // каждый элемент ~40px
   });
+
+  const hasTasks = tasks.length > 0;
 
   return (
     <View style={styles.container}>
       <TouchableOpacity onPress={toggleExpand} activeOpacity={0.8}>
         <View style={styles.wrapper}>
           <Typography type="default" style={styles.text}>
-            Сегодня есть дела!
+            {isLoading
+              ? "Загружаем дела на сегодня..."
+              : hasTasks
+                ? `Сегодня есть дела: ${tasks.length}`
+                : "Сегодня дел нет"}
           </Typography>
 
           <Animated.View style={{ transform: [{ rotate }] }}>
@@ -71,10 +81,10 @@ export const TodayDeals = () => {
       <Animated.View
         style={[styles.listContainer, { height, overflow: "hidden" }]}
       >
-        {deals.map((deal, index) => (
+        {tasks.map((task, index) => (
           <View key={index} style={styles.dealItem}>
             <Typography type="default" style={styles.dealText}>
-              {deal}
+              {task.gardenName} — {task.plantName}
             </Typography>
           </View>
         ))}

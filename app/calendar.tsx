@@ -1,3 +1,4 @@
+import { useCalendarMonth } from "@/api/hooks/calendar/useCalendarMonth";
 import { theme } from "@/constants/theme";
 import { buildDefaultHeaderOptions } from "@/shared/ui/header";
 import { Typography } from "@/shared/ui/Typography";
@@ -8,6 +9,14 @@ import { ScrollView, StyleSheet, View } from "react-native";
 type MonthGridProps = {
   baseDate: Date; // any day within the month to render
 };
+
+function getDayOfMonthFromYmd(ymd: string): number | null {
+  // expected format: YYYY-MM-DD
+  const parts = ymd.split("-");
+  if (parts.length !== 3) return null;
+  const day = Number(parts[2]);
+  return Number.isFinite(day) ? day : null;
+}
 
 function getMonthMatrix(baseDate: Date) {
   const year = baseDate.getFullYear();
@@ -42,6 +51,22 @@ const dayLabels = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
 
 const MonthGrid = ({ baseDate }: MonthGridProps) => {
   const today = new Date();
+  const year = baseDate.getFullYear();
+  const month = baseDate.getMonth() + 1; // API expects 1..12
+
+  const monthQuery = useCalendarMonth(year, month);
+
+  const daysWithTasks = useMemo(() => {
+    const set = new Set<number>();
+    const days = monthQuery.data?.days ?? [];
+    for (const d of days) {
+      if (!d.tasks?.length) continue;
+      const dayNum = getDayOfMonthFromYmd(d.date);
+      if (dayNum !== null) set.add(dayNum);
+    }
+    return set;
+  }, [monthQuery.data]);
+
   const monthTitle = useMemo(() => {
     const formatter = new Intl.DateTimeFormat("ru-RU", {
       month: "long",
@@ -75,10 +100,15 @@ const MonthGrid = ({ baseDate }: MonthGridProps) => {
               today.getDate() === day &&
               today.getMonth() === baseDate.getMonth() &&
               today.getFullYear() === baseDate.getFullYear();
+            const hasTasks = day !== null && daysWithTasks.has(day);
             return (
               <View
                 key={j}
-                style={[styles.dayCell, isToday && styles.dayCellActive]}
+                style={[
+                  styles.dayCell,
+                  hasTasks && styles.dayCellWithTasks,
+                  isToday && styles.dayCellActive,
+                ]}
               >
                 {day !== null ? (
                   <>
@@ -90,7 +120,14 @@ const MonthGrid = ({ baseDate }: MonthGridProps) => {
                     >
                       {day}
                     </Typography>
-                    <View style={[styles.dot, isToday && styles.dotActive]} />
+                    {hasTasks ? (
+                      <View
+                        style={[
+                          styles.dot,
+                          isToday ? styles.dotActive : styles.dotWithTasks,
+                        ]}
+                      />
+                    ) : null}
                   </>
                 ) : (
                   <View />
@@ -165,6 +202,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  dayCellWithTasks: {
+    borderColor: theme.color.background.pressed,
+  },
   dayCellActive: {
     backgroundColor: theme.color.background.usual,
     borderColor: theme.color.background.usual,
@@ -181,6 +221,9 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     marginTop: 6,
     backgroundColor: theme.color.background.usual,
+  },
+  dotWithTasks: {
+    backgroundColor: theme.color.background.pressed,
   },
   dotActive: {
     backgroundColor: theme.color.background.default,

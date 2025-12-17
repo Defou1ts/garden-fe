@@ -1,5 +1,8 @@
 import { ScrollView, StyleSheet, View } from "react-native";
 
+import { useAdvices } from "@/api/hooks/advice/useAdvices";
+import { useCalendarToday } from "@/api/hooks/calendar/useCalendarToday";
+import { useWeather } from "@/api/hooks/weather/useWeather";
 import { CurrentDayOfWeek } from "@/components/current-day-of-week";
 import { SegmentHeadline } from "@/components/sgement-headline";
 import { TipsList } from "@/components/tips-list";
@@ -32,6 +35,13 @@ export default function HomeScreen() {
   const [selectedCheckBox, setSelectedCheckBox] = useState(radios[0]);
   const [switchActive, setSwitchActive] = useState(false);
 
+  // TODO: заменить на реальную геолокацию/профиль пользователя
+  const DEFAULT_COORDS = { lat: 55.7558, lon: 37.6173 }; // Москва
+
+  const weatherQuery = useWeather(DEFAULT_COORDS.lat, DEFAULT_COORDS.lon);
+  const todayQuery = useCalendarToday();
+  const advicesQuery = useAdvices();
+
   return (
     <ScrollView style={styles.wrapper}>
       <Typography type="title">Добро пожаловать!</Typography>
@@ -39,22 +49,38 @@ export default function HomeScreen() {
       <View style={styles.weather}>
         <Image
           style={styles.weatherImage}
-          source={require("../../assets/images/sun.png")}
+          source={
+            weatherQuery.data?.photoUrl ??
+            require("../../assets/images/sun.png")
+          }
         />
+        {weatherQuery.data ? (
+          <View style={styles.weatherTextContainer}>
+            <Typography style={styles.weatherText}>18 сентября</Typography>
+            <Typography style={styles.weatherText}>
+              {weatherQuery.data.dayTemperature}° /{" "}
+              {weatherQuery.data.nightTemperature}°{" "}
+              {weatherQuery.data.weatherName}
+            </Typography>
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.week}>
         <CurrentDayOfWeek />
       </View>
       <View style={styles.deals}>
-        <TodayDeals />
+        <TodayDeals tasks={todayQuery.data} isLoading={todayQuery.isLoading} />
       </View>
       <SegmentHeadline
         style={styles.tips}
         title="Советы"
         onPress={() => router.push("/tips")}
       />
-      <TipsList />
+      <TipsList
+        advices={advicesQuery.data}
+        isLoading={advicesQuery.isLoading}
+      />
     </ScrollView>
   );
 }
@@ -74,7 +100,15 @@ const styles = StyleSheet.create({
     width: "100%",
     objectFit: "cover",
   },
-
+  weatherTextContainer: {
+    color: "white",
+    marginTop: 48,
+    paddingHorizontal: 24,
+    position: "absolute",
+  },
+  weatherText: {
+    color: "white",
+  },
   week: {
     marginTop: 32,
   },

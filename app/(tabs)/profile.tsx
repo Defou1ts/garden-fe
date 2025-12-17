@@ -1,3 +1,4 @@
+import { useLogout } from "@/api/hooks/auth/useLogout";
 import { theme } from "@/constants/theme";
 import { Typography } from "@/shared/ui/Typography";
 import { Image } from "expo-image";
@@ -30,6 +31,7 @@ const MenuItem = ({ onPress, imageSrc, title, style }: MenuItemProps) => {
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const logoutMutation = useLogout();
   return (
     <View>
       <Typography type="title">Профиль</Typography>
@@ -83,9 +85,18 @@ export default function ProfileScreen() {
         imageSrc={require("@/assets/images/about.png")}
         title="О нас"
       />
-      <Pressable onPress={() => {}}>
+      <Pressable
+        onPress={() => {
+          logoutMutation.mutate(undefined, {
+            onSuccess: () => {
+              router.replace("/auth");
+            },
+          });
+        }}
+        disabled={logoutMutation.isPending}
+      >
         <Typography style={styles.exit} type="default">
-          Выход
+          {logoutMutation.isPending ? "Выходим..." : "Выход"}
         </Typography>
       </Pressable>
     </View>

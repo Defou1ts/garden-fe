@@ -1,3 +1,5 @@
+import { authApi } from "@/api/auth.api";
+import { useLogin } from "@/api/hooks/auth/useLogin";
 import { EditIcon } from "@/assets/icons/EditIcon";
 import { theme } from "@/constants/theme";
 import { TextBox } from "@/shared/ui/text-box";
@@ -10,15 +12,8 @@ import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
 function isEmailRegistered(email: string): boolean {
-  return true;
-}
-
-function handleLogin(email: string, password: string): boolean {
-  return true;
-}
-
-function handleRegister(email: string, password: string): boolean {
-  return true;
+  // TODO: заменить на API, когда появится эндпоинт для проверки email
+  return Boolean(email);
 }
 
 // Password validation functions
@@ -62,10 +57,9 @@ export default function AuthPage() {
   );
 
   const router = useRouter();
+  const loginMutation = useLogin();
 
   const handleContinueClick = () => {
-    console.log(email);
-
     const isRegistered = isEmailRegistered(email);
 
     if (isRegistered) {
@@ -80,20 +74,38 @@ export default function AuthPage() {
   };
 
   const handleContinueLogin = () => {
-    const success = handleLogin(email, password);
-    if (success) {
-      router.push("/(tabs)");
-    } else {
-      setLoginError("Пароль не совпадает!");
-    }
+    setLoginError(undefined);
+    loginMutation.mutate(
+      { email, password },
+      {
+        onSuccess: () => {
+          router.replace("/(tabs)");
+        },
+        onError: (e) => {
+          const errors = Object.values(e.response?.data.errors ?? {});
+          console.log(e, errors);
+
+          setLoginError(
+            errors.join(",") || "Не удалось войти. Проверьте email и пароль."
+          );
+        },
+      }
+    );
   };
 
-  const handleContinueRegister = () => {
-    const success = handleRegister(email, password);
-    if (success) {
-      router.push("/(tabs)");
-    } else {
-      setRegisterError("Ошибка");
+  const handleContinueRegister = async () => {
+    setRegisterError(undefined);
+    try {
+      await authApi.register({
+        email,
+        password,
+        confirmPassword: password,
+      });
+      // после регистрации сразу логинимся теми же данными (и получаем токены)
+      await loginMutation.mutateAsync({ email, password });
+      router.replace("/(tabs)");
+    } catch {
+      setRegisterError("Не удалось зарегистрироваться. Проверьте данные.");
     }
   };
 
@@ -115,8 +127,12 @@ export default function AuthPage() {
           handleBackClick={handleBackClick}
           handleContinueLogin={handleContinueLogin}
           error={loginError}
+          isPending={loginMutation.isPending}
           password={password}
-          setPassword={setPassword}
+          setPassword={(v) => {
+            setLoginError(undefined);
+            setPassword(v);
+          }}
         />
       )}{" "}
       {authStatus === "register" && (
@@ -124,9 +140,13 @@ export default function AuthPage() {
           handleBackClick={handleBackClick}
           handleContinueRegister={handleContinueRegister}
           error={regitserError}
+          isPending={loginMutation.isPending}
           email={email}
           password={password}
-          setPassword={setPassword}
+          setPassword={(v) => {
+            setRegisterError(undefined);
+            setPassword(v);
+          }}
         />
       )}
     </ScrollView>
@@ -333,6 +353,7 @@ type LoginBlockProps = {
   handleBackClick: () => void;
   handleContinueLogin: () => void;
   error?: string;
+  isPending?: boolean;
   password: string;
   setPassword: (password: string) => void;
 };
@@ -341,6 +362,7 @@ const LoginBlock = ({
   handleBackClick,
   handleContinueLogin,
   error,
+  isPending,
   password,
   setPassword,
 }: LoginBlockProps) => {
@@ -360,10 +382,18 @@ const LoginBlock = ({
           secureTextEntry
         />
         {error && <Typography type="label">{error}</Typography>}
-        <ThemedButton onPress={handleContinueLogin} textAlign="center">
-          Продолжить
+        <ThemedButton
+          onPress={handleContinueLogin}
+          textAlign="center"
+          disabled={Boolean(isPending)}
+        >
+          {isPending ? "Входим..." : "Продолжить"}
         </ThemedButton>
-        <ThemedButton onPress={handleBackClick} textAlign="center">
+        <ThemedButton
+          onPress={handleBackClick}
+          textAlign="center"
+          disabled={Boolean(isPending)}
+        >
           Назад
         </ThemedButton>
       </View>
@@ -373,8 +403,9 @@ const LoginBlock = ({
 
 type RegisterBlockProps = {
   handleBackClick: () => void;
-  handleContinueRegister: () => void;
+  handleContinueRegister: () => void | Promise<void>;
   error?: string;
+  isPending?: boolean;
   email: string;
   password: string;
   setPassword: (password: string) => void;
@@ -384,6 +415,7 @@ const RegisterBlock = ({
   handleBackClick,
   handleContinueRegister,
   error,
+  isPending,
   email,
   password,
   setPassword,
@@ -471,11 +503,15 @@ const RegisterBlock = ({
         <ThemedButton
           onPress={handleContinueRegister}
           textAlign="center"
-          disabled={!isFormValid}
+          disabled={!isFormValid || Boolean(isPending)}
         >
-          Продолжить
+          {isPending ? "Подождите..." : "Продолжить"}
         </ThemedButton>
-        <ThemedButton onPress={handleBackClick} textAlign="center">
+        <ThemedButton
+          onPress={handleBackClick}
+          textAlign="center"
+          disabled={Boolean(isPending)}
+        >
           Назад
         </ThemedButton>
       </View>

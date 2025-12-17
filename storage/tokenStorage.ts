@@ -1,20 +1,19 @@
-import { createMMKV } from "react-native-mmkv";
+import * as SecureStore from "expo-secure-store";
 
 const ACCESS_TOKEN_KEY = "accessToken";
 const REFRESH_TOKEN_KEY = "refreshToken";
 
-const storage = createMMKV();
-
 export const tokenStorage = {
-  getAccessToken: () => storage.getString(ACCESS_TOKEN_KEY),
-  getRefreshToken: () => storage.getString(REFRESH_TOKEN_KEY),
+  getAccessToken: () => SecureStore.getItem(ACCESS_TOKEN_KEY),
+  getRefreshToken: () => SecureStore.getItem(REFRESH_TOKEN_KEY),
 
   setTokens: (accessToken: string, refreshToken: string) => {
-    storage.set(ACCESS_TOKEN_KEY, accessToken);
-    storage.set(REFRESH_TOKEN_KEY, refreshToken);
+    SecureStore.setItem(ACCESS_TOKEN_KEY, accessToken);
+    SecureStore.setItem(REFRESH_TOKEN_KEY, refreshToken);
   },
 
-  clear: () => {
-    storage.clearAll();
+  clear: async () => {
+    await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
+    await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
   },
 };

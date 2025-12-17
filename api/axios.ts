@@ -1,7 +1,7 @@
 import { tokenStorage } from "@/storage/tokenStorage";
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-const API_URL = "http://localhost:8080";
+const API_URL = "http://192.168.0.103:8080";
 
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -51,7 +51,7 @@ api.interceptors.response.use(
       const refreshToken = tokenStorage.getRefreshToken();
 
       if (!refreshToken) {
-        tokenStorage.clear();
+        await tokenStorage.clear();
         return Promise.reject(error);
       }
 
@@ -85,7 +85,7 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (err) {
         processQueue(err, null);
-        tokenStorage.clear();
+        await tokenStorage.clear();
         return Promise.reject(err);
       } finally {
         isRefreshing = false;
