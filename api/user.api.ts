@@ -21,4 +21,9 @@ export const userApi = {
 
     return res.data;
   },
+
+  checkEmail: async (email: string): Promise<boolean> => {
+    const res = await api.post("/api/users/check-email", { email });
+    return res.data;
+  },
 };

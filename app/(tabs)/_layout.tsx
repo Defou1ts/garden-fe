@@ -1,7 +1,9 @@
 import { Tabs } from "expo-router";
-import React, { useState } from "react";
+import React from "react";
 import { ScrollView, StyleSheet } from "react-native";
 
+import { useUserProfile } from "@/api/hooks/user/useUserProfile";
+import { UserRole } from "@/api/user.types";
 import { BookIcon } from "@/assets/icons/BookIcon";
 import { EditIcon } from "@/assets/icons/EditIcon";
 import { FeatureIcon } from "@/assets/icons/FeatureIcon";
@@ -15,7 +17,8 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  const [role] = useState<"USER" | "ADMIN">("USER"); // поменяй на 'USER' для проверки
+  const profileQuery = useUserProfile();
+  const role = profileQuery.data?.role ?? UserRole.USER;
 
   // Для каждого таба определяем, показывать или нет его для данной роли
   const isUser = role === "USER";
@@ -142,5 +145,6 @@ const styles = StyleSheet.create({
   container: {
     height: "100%",
     padding: 32,
+    backgroundColor: theme.color.background.default,
   },
 });

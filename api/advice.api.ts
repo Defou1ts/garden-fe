@@ -1,3 +1,4 @@
+import { buildFormData } from "../utils/formData";
 import {
   Advice,
   CreateAdviceRequest,
@@ -17,7 +18,14 @@ export const adviceApi = {
   },
 
   createAdvice: async (data: CreateAdviceRequest): Promise<Advice> => {
-    const res = await api.post("/api/advices", data);
+    const formData = buildFormData(data);
+    console.log("create", formData);
+    const res = await api.post("/api/advices", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
     return res.data;
   },
 
@@ -25,7 +33,14 @@ export const adviceApi = {
     id: string,
     data: UpdateAdviceRequest
   ): Promise<Advice> => {
-    const res = await api.put(`/api/advices/${id}`, data);
+    const formData = buildFormData(data);
+    console.log("update", formData, id);
+
+    const res = await api.put(`/api/advices/${id}`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
     return res.data;
   },
 

@@ -1,8 +1,15 @@
 import { useLogout } from "@/api/hooks/auth/useLogout";
+import { useUpdateUserProfile } from "@/api/hooks/user/useUpdateUserProfile";
+import { useUserProfile } from "@/api/hooks/user/useUserProfile";
+import { EditIcon } from "@/assets/icons/EditIcon";
 import { theme } from "@/constants/theme";
 import { Typography } from "@/shared/ui/Typography";
+import { TextBox } from "@/shared/ui/text-box";
+import { ThemedButton } from "@/shared/ui/themed-button";
+import { getPhotoUrl } from "@/utils/getPhotoUrl";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleProp, StyleSheet, View } from "react-native";
 
 type MenuItemProps = {
@@ -32,43 +39,104 @@ const MenuItem = ({ onPress, imageSrc, title, style }: MenuItemProps) => {
 export default function ProfileScreen() {
   const router = useRouter();
   const logoutMutation = useLogout();
+  const profileQuery = useUserProfile();
+  const updateProfileMutation = useUpdateUserProfile();
+
+  const [fullName, setFullName] = useState("");
+  const [isEditingName, setIsEditingName] = useState(false);
+
+  useEffect(() => {
+    if (profileQuery.data?.fullName) {
+      setFullName(profileQuery.data.fullName);
+      setIsEditingName(false);
+    }
+  }, [profileQuery.data?.fullName]);
+
+  const profilePhoto = useMemo(() => {
+    if (!profileQuery.data?.profilePhotoUrl)
+      return require("@/assets/images/profile.png");
+    return getPhotoUrl(profileQuery.data.profilePhotoUrl);
+  }, [profileQuery.data?.profilePhotoUrl]);
+
   return (
     <View>
       <Typography type="title">Профиль</Typography>
       <View style={styles.profileInfo}>
-        <Image
-          source={require("@/assets/images/profile.png")}
-          style={styles.profilePhoto}
-        />
-        <Typography type="default">Щербакова Дарья</Typography>
+        <Image source={profilePhoto} style={styles.profilePhoto} />
+        <View style={styles.nameRow}>
+          <Typography type="default" numberOfLines={1} style={styles.nameText}>
+            {profileQuery.isLoading
+              ? "Загружаем профиль..."
+              : (profileQuery.data?.fullName ?? "—")}
+          </Typography>
+          <Pressable
+            hitSlop={8}
+            onPress={() => {
+              setFullName(profileQuery.data?.fullName ?? "");
+              setIsEditingName(true);
+            }}
+          >
+            <EditIcon
+              width={16}
+              height={16}
+              fill={theme.color.background.usual}
+            />
+          </Pressable>
+        </View>
       </View>
       <View style={styles.divider} />
+
+      <Typography style={styles.subtitle} type="title">
+        Профиль
+      </Typography>
+      {isEditingName ? (
+        <View style={styles.form}>
+          <TextBox
+            placeholder="Ваше имя"
+            value={fullName}
+            onChangeText={setFullName}
+          />
+          <View style={styles.formButtons}>
+            <ThemedButton
+              textAlign="center"
+              onPress={() =>
+                updateProfileMutation.mutate(
+                  { fullName },
+                  {
+                    onSuccess: () => {
+                      setIsEditingName(false);
+                    },
+                  }
+                )
+              }
+              disabled={updateProfileMutation.isPending}
+            >
+              {updateProfileMutation.isPending ? "Сохраняем..." : "Сохранить"}
+            </ThemedButton>
+            <ThemedButton
+              textAlign="center"
+              onPress={() => {
+                setFullName(profileQuery.data?.fullName ?? "");
+                setIsEditingName(false);
+              }}
+              disabled={updateProfileMutation.isPending}
+            >
+              Отмена
+            </ThemedButton>
+          </View>
+          {updateProfileMutation.isError ? (
+            <Typography type="default" style={styles.error}>
+              Не удалось сохранить профиль
+            </Typography>
+          ) : null}
+        </View>
+      ) : null}
+
       <MenuItem
         onPress={() => router.push("/featured")}
         style={styles.features}
         imageSrc={require("@/assets/images/featured.png")}
         title="Мои заметки"
-      />
-      <Typography style={styles.subtitle} type="title">
-        Настройки
-      </Typography>
-      <MenuItem
-        style={styles.menuItemDefault}
-        imageSrc={require("@/assets/images/notifications.png")}
-        title="Уведомления"
-        onPress={() => router.push("/notifications")}
-      />
-      <MenuItem
-        style={styles.menuItemDefault}
-        imageSrc={require("@/assets/images/privacy.png")}
-        title="Конфиденциальность"
-        onPress={() => router.push("/privacy")}
-      />
-      <MenuItem
-        style={styles.menuItemDefault}
-        imageSrc={require("@/assets/images/language.png")}
-        title="Язык"
-        onPress={() => router.push("/language")}
       />
       <Typography style={styles.subtitle} type="title">
         Помощь
@@ -145,8 +213,31 @@ const styles = StyleSheet.create({
   subtitle: {
     marginBottom: 24,
   },
+  form: {
+    gap: 12,
+    marginBottom: 32,
+  },
+  formButtons: {
+    marginTop: 8,
+    gap: 8,
+  },
   exit: {
     color: "red",
     marginTop: 32,
+  },
+  error: {
+    color: "red",
+  },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  nameText: {
+    textAlign: "center",
+  },
+  editLink: {
+    color: theme.color.background.usual,
   },
 });

@@ -1,3 +1,4 @@
+import { theme } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useRalewayFonts } from "@/hooks/useRalewayFonts";
 import { queryClient } from "@/query/queryClient";
@@ -29,13 +30,32 @@ export default function RootLayout() {
     }
   }, [areFontsLoaded, errorFontsLoaded]);
 
+  const navigationTheme =
+    colorScheme === "dark"
+      ? {
+          ...DarkTheme,
+          colors: {
+            ...DarkTheme.colors,
+            background: theme.color.background.default,
+            card: theme.color.background.default,
+          },
+        }
+      : {
+          ...DefaultTheme,
+          colors: {
+            ...DefaultTheme.colors,
+            background: theme.color.background.default,
+            card: theme.color.background.default,
+          },
+        };
+
   if (!areFontsLoaded && !errorFontsLoaded) {
     return null;
   }
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+      <ThemeProvider value={navigationTheme}>
         <Stack
           initialRouteName="auth"
           layout={(props) => <View style={styles.container} {...props} />}
@@ -57,5 +77,6 @@ const styles = StyleSheet.create({
   container: {
     height: "100%",
     paddingTop: Constants.statusBarHeight,
+    backgroundColor: theme.color.background.default,
   },
 });

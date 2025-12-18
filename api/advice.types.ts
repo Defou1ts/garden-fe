@@ -7,8 +7,12 @@ export type Advice = {
 
 export type CreateAdviceRequest = {
   title: string;
-  photoUrl: string;
   description: string;
+  photo: {
+    uri: string;
+    name: string;
+    type: string;
+  };
 };
 
 export type UpdateAdviceRequest = Partial<CreateAdviceRequest>;

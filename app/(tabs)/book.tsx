@@ -24,7 +24,6 @@ export default function BookScreen() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const plantsQuery = useVerifiedPlants(true);
-  console.log(plantsQuery.data)
   const plants = plantsQuery.data ?? [];
 
   const handleSort = () => {

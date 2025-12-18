@@ -1,5 +1,6 @@
 import { authApi } from "@/api/auth.api";
 import { useLogin } from "@/api/hooks/auth/useLogin";
+import { useCheckEmail } from "@/api/hooks/user/useCheckEmail";
 import { EditIcon } from "@/assets/icons/EditIcon";
 import { theme } from "@/constants/theme";
 import { TextBox } from "@/shared/ui/text-box";
@@ -10,11 +11,6 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
-
-function isEmailRegistered(email: string): boolean {
-  // TODO: заменить на API, когда появится эндпоинт для проверки email
-  return Boolean(email);
-}
 
 // Password validation functions
 function validatePasswordLength(password: string): boolean {
@@ -55,17 +51,24 @@ export default function AuthPage() {
   const [regitserError, setRegisterError] = useState<string | undefined>(
     undefined
   );
+  const [emailCheckError, setEmailCheckError] = useState<string | undefined>(
+    undefined
+  );
 
   const router = useRouter();
   const loginMutation = useLogin();
+  const checkEmailMutation = useCheckEmail();
 
-  const handleContinueClick = () => {
-    const isRegistered = isEmailRegistered(email);
+  const handleContinueClick = async () => {
+    setEmailCheckError(undefined);
 
-    if (isRegistered) {
-      setAuthStatus("login");
-    } else {
-      setAuthStatus("register");
+    try {
+      const isRegistered = await checkEmailMutation.mutateAsync(email);
+      setAuthStatus(isRegistered ? "login" : "register");
+    } catch {
+      setEmailCheckError(
+        "Не удалось проверить email. Попробуйте ещё раз чуть позже."
+      );
     }
   };
 
@@ -83,7 +86,6 @@ export default function AuthPage() {
         },
         onError: (e) => {
           const errors = Object.values(e.response?.data.errors ?? {});
-
 
           setLoginError(
             errors.join(",") || "Не удалось войти. Проверьте email и пароль."
@@ -120,6 +122,8 @@ export default function AuthPage() {
           onContinueClick={handleContinueClick}
           email={email}
           setEmail={setEmail}
+          isChecking={checkEmailMutation.isPending}
+          error={emailCheckError}
         />
       )}
       {authStatus === "login" && (
@@ -293,10 +297,14 @@ const AuthBlock = ({
   onContinueClick,
   email,
   setEmail,
+  isChecking,
+  error,
 }: {
   onContinueClick: () => void;
   email: string;
   setEmail: (email: string) => void;
+  isChecking: boolean;
+  error?: string;
 }) => {
   return (
     <View style={styles.auth}>
@@ -314,9 +322,18 @@ const AuthBlock = ({
           value={email}
           onChangeText={setEmail}
         />
-        <ThemedButton onPress={onContinueClick} textAlign="center">
-          Продолжить
+        <ThemedButton
+          onPress={onContinueClick}
+          textAlign="center"
+          disabled={!email || isChecking}
+        >
+          {isChecking ? "Проверяем..." : "Продолжить"}
         </ThemedButton>
+        {error && (
+          <Typography type="label" style={{ marginTop: 4 }}>
+            {error}
+          </Typography>
+        )}
       </View>
       <Typography style={styles.otherwise} type="default">
         или
