@@ -18,6 +18,9 @@ export const useRemovePlant = () => {
       queryClient.invalidateQueries({
         queryKey: gardenKeys.detail(variables.gardenId),
       });
+      queryClient.invalidateQueries({
+        queryKey: gardenKeys.lists(),
+      });
     },
   });
 };

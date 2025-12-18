@@ -44,7 +44,12 @@ export const Card = ({
       <View
         style={[
           styles.iconWrapper,
-          { maxWidth: imageSize, maxHeight: imageSize },
+          {
+            width: imageSize,
+            height: imageSize,
+            maxWidth: imageSize,
+            maxHeight: imageSize,
+          },
         ]}
       >
         <Image
@@ -80,10 +85,6 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   iconWrapper: {
-    maxWidth: 116,
-    maxHeight: 116,
-    width: "100%",
-    height: "100%",
     borderRadius: 30,
   },
   label: {

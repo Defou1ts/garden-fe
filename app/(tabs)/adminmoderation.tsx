@@ -51,7 +51,7 @@ export default function AdminModerationPage() {
   const position = useRef(new Animated.ValueXY()).current;
 
   const handleSwipeAction = (dir: "left" | "right" | "down") => {
-    console.log(`Action: ${dir}`, queue[current]?.id);
+
     Animated.timing(position, {
       toValue:
         dir === "right"

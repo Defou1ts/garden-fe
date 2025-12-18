@@ -11,6 +11,9 @@ export const useDeleteGarden = () => {
       queryClient.invalidateQueries({
         queryKey: gardenKeys.all,
       });
+      queryClient.invalidateQueries({
+        queryKey: gardenKeys.lists(),
+      });
     },
   });
 };

@@ -1,42 +1,83 @@
+import { useVerifiedPlants } from "@/api/hooks/plant/useVerifiedPlants";
 import { SortIcon } from "@/assets/icons/SortIcon";
 import { theme } from "@/constants/theme";
 import { Typography } from "@/shared/ui/Typography";
 import { Card } from "@/shared/ui/card";
 import { SearchBar } from "@/shared/ui/search-bar";
 import { Tabs as SegmentedTabs } from "@/shared/ui/tabs";
+import { getPhotoUrl } from "@/utils/getPhotoUrl";
+import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 const tabsItems = [
-  { index: 0, label: "Цветы" },
-  { index: 1, label: "Ягоды" },
-  { index: 2, label: "Овощи" },
-  { index: 3, label: "Деревья" },
+  { index: 0, label: "Цветы", type: "Flower" },
+  { index: 1, label: "Ягоды", type: "Berry" },
+  { index: 2, label: "Овощи", type: "Vegetable" },
+  { index: 3, label: "Деревья", type: "Tree" },
 ];
 
-const testFlowersList = ["Аглаонема", "Базалия", "Алоказия", "Яльстромерия"];
-
 export default function BookScreen() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState(tabsItems[0].index);
-  const [flowersList] = useState(testFlowersList);
   const [sortBy, setSortBy] = useState<"asc" | "desc">("asc");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const handleSortFlowersList = () => {
+  const plantsQuery = useVerifiedPlants(true);
+  console.log(plantsQuery.data)
+  const plants = plantsQuery.data ?? [];
+
+  const handleSort = () => {
     setSortBy((prevSort) => (prevSort === "asc" ? "desc" : "asc"));
   };
 
-  const visibleFlowers = useMemo(() => {
+  const filteredPlants = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
+    const activeType = tabsItems.find((t) => t.index === activeTab)?.type;
 
-    const filtered = flowersList.filter((name) =>
-      name.toLowerCase().includes(normalizedQuery)
-    );
+    const byType = activeType
+      ? plants.filter((p) => p.type === activeType)
+      : plants;
 
-    return filtered.sort((a, b) =>
-      sortBy === "asc" ? a.localeCompare(b) : b.localeCompare(a)
+    const byQuery = normalizedQuery
+      ? byType.filter((p) => p.name.toLowerCase().includes(normalizedQuery))
+      : byType;
+
+    return [...byQuery].sort((a, b) =>
+      sortBy === "asc"
+        ? a.name.localeCompare(b.name)
+        : b.name.localeCompare(a.name)
     );
-  }, [flowersList, searchQuery, sortBy]);
+  }, [activeTab, plants, searchQuery, sortBy]);
+
+  const featured = filteredPlants.slice(0, 5);
+
+  const renderCard = (
+    id: string,
+    title: string,
+    label: string,
+    photo: string
+  ) => (
+    <Pressable
+      key={id}
+      onPress={() =>
+        router.push({
+          pathname: "/plant/[id]",
+          params: { id },
+        } as any)
+      }
+    >
+      <Card
+        textColor={theme.color.background.default}
+        backgroundColor={theme.color.background.usual}
+        imageSrc={getPhotoUrl(photo)}
+        title={title}
+        label={label}
+        imageCornerRadius={18}
+        maxLabelLines={3}
+      />
+    </Pressable>
+  );
 
   return (
     <ScrollView>
@@ -50,32 +91,30 @@ export default function BookScreen() {
         Может вам понравится:
       </Typography>
 
-      <View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.featuredScroller}
-        >
-          <View style={styles.featuredCard}>
-            <Card
-              textColor={theme.color.background.default}
-              backgroundColor={theme.color.background.usual}
-              imageSrc={require("@/assets/images/react-logo.png")}
-              title={"Эхеверия\nМикс"}
-              label={"Суккулент\nСветолюбива и\nлюбит прямые\nсолнечные лучи."}
-            />
-          </View>
-          <View style={styles.featuredCard}>
-            <Card
-              textColor={theme.color.background.default}
-              backgroundColor={theme.color.background.usual}
-              imageSrc={require("@/assets/images/react-logo.png")}
-              title={"Эхеверия\nМикс"}
-              label={"Суккулент\nСветолюбива и\nлюбит прямые\nсолнечные лучи."}
-            />
-          </View>
-        </ScrollView>
-      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.featuredScroller}
+      >
+        {featured.length === 0 && plantsQuery.isLoading ? (
+          <Typography type="default">Загружаем растения...</Typography>
+        ) : null}
+
+        {featured.length === 0 && !plantsQuery.isLoading ? (
+          <Typography type="default" style={styles.emptyState}>
+            Нет подходящих растений
+          </Typography>
+        ) : null}
+
+        {featured.map((plant) =>
+          renderCard(
+            plant.id,
+            plant.name,
+            plant.sunHours || "Описание скоро появится",
+            plant.photoUrl
+          )
+        )}
+      </ScrollView>
 
       <View style={styles.searchRow}>
         <View style={{ flex: 1 }}>
@@ -85,7 +124,7 @@ export default function BookScreen() {
             onChangeText={setSearchQuery}
           />
         </View>
-        <Pressable onPress={handleSortFlowersList}>
+        <Pressable onPress={handleSort}>
           <SortIcon
             style={{
               transform: [{ rotate: sortBy === "desc" ? "180deg" : "0deg" }],
@@ -95,19 +134,33 @@ export default function BookScreen() {
       </View>
 
       <View style={styles.list}>
-        {visibleFlowers.length > 0 ? (
-          visibleFlowers.map((name) => (
-            <Card
-              key={name}
-              imageSrc={require("@/assets/images/react-logo.png")}
-              title={name}
-              label={"Вечнозеленое"}
-            />
-          ))
-        ) : (
+        {plantsQuery.isLoading ? (
+          <Typography type="default" style={styles.emptyState}>
+            Загружаем растения...
+          </Typography>
+        ) : null}
+
+        {plantsQuery.isError ? (
+          <Typography type="default" style={styles.emptyState}>
+            Не удалось загрузить растения
+          </Typography>
+        ) : null}
+
+        {!plantsQuery.isLoading &&
+        !plantsQuery.isError &&
+        filteredPlants.length === 0 ? (
           <Typography type="default" style={styles.emptyState}>
             Ничего не найдено
           </Typography>
+        ) : null}
+
+        {filteredPlants.map((plant) =>
+          renderCard(
+            plant.id,
+            plant.name,
+            plant.sunHours || "Описание скоро появится",
+            plant.photoUrl
+          )
         )}
       </View>
     </ScrollView>
@@ -122,9 +175,6 @@ const styles = StyleSheet.create({
   featuredScroller: {
     flexDirection: "row",
     gap: 16,
-  },
-  featuredCard: {
-    width: 320,
   },
   searchRow: {
     marginTop: 24,

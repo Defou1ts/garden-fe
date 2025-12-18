@@ -83,7 +83,7 @@ export default function AuthPage() {
         },
         onError: (e) => {
           const errors = Object.values(e.response?.data.errors ?? {});
-          console.log(e, errors);
+
 
           setLoginError(
             errors.join(",") || "Не удалось войти. Проверьте email и пароль."
