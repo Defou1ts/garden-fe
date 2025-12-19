@@ -1,18 +1,11 @@
 import { adviceApi } from "@/api/advice.api";
+import { UpdateAdviceRequest } from "@/api/advice.types";
 import { adviceKeys } from "@/query/advice.keys";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 type Params = {
   id: string;
-  data: {
-    title?: string;
-    photo?: {
-      uri: string;
-      name: string;
-      type: string;
-    };
-    description?: string;
-  };
+  data: UpdateAdviceRequest;
 };
 
 export const useUpdateAdvice = () => {

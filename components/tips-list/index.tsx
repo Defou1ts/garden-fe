@@ -1,5 +1,6 @@
 import type { Advice } from "@/api/advice.types";
 import { Typography } from "@/shared/ui/Typography";
+import { getPhotoUrl } from "@/utils/getPhotoUrl";
 import { Image } from "expo-image";
 import { StyleSheet, View } from "react-native";
 
@@ -16,7 +17,7 @@ export const TipsList = ({ advices = [], isLoading }: TipsListProps) => {
       ) : (
         advices.map((advice) => (
           <View key={advice.id} style={styles.cardWrapper}>
-            <Image style={styles.image} source={advice.photoUrl} />
+            <Image style={styles.image} source={getPhotoUrl(advice.photoUrl)} />
             <Typography type="default">{advice.title}</Typography>
           </View>
         ))

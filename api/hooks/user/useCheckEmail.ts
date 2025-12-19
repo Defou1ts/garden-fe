@@ -6,3 +6,4 @@ export const useCheckEmail = () => {
     mutationFn: (email: string) => userApi.checkEmail(email),
   });
 };
+

@@ -19,13 +19,12 @@ export const adviceApi = {
 
   createAdvice: async (data: CreateAdviceRequest): Promise<Advice> => {
     const formData = buildFormData(data);
-    console.log("create", formData);
+
     const res = await api.post("/api/advices", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
     });
-
     return res.data;
   },
 
@@ -34,7 +33,6 @@ export const adviceApi = {
     data: UpdateAdviceRequest
   ): Promise<Advice> => {
     const formData = buildFormData(data);
-    console.log("update", formData, id);
 
     const res = await api.put(`/api/advices/${id}`, formData, {
       headers: {

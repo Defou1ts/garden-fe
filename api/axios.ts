@@ -1,7 +1,9 @@
 import { tokenStorage } from "@/storage/tokenStorage";
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-export const API_URL = "http://192.168.0.103:8080";
+export const API_URL = "http://10.0.2.2:8080";
+// export const API_URL = "http://192.168.0.103:8080";
+// export const API_URL = "10.92.124.15:8080";
 
 let isRefreshing = false;
 let failedQueue: Array<{

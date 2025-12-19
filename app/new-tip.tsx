@@ -1,3 +1,5 @@
+import { AdvicePhoto } from "@/api/advice.types";
+import { useAdvice } from "@/api/hooks/advice/useAdvice";
 import { useCreateAdvice } from "@/api/hooks/advice/useCreateAdvice";
 import { useUpdateAdvice } from "@/api/hooks/advice/useUpdateAdvice";
 import { theme } from "@/constants/theme";
@@ -5,111 +7,156 @@ import { buildDefaultHeaderOptions } from "@/shared/ui/header";
 import { TextBox } from "@/shared/ui/text-box";
 import { ThemedButton } from "@/shared/ui/themed-button";
 import { Typography } from "@/shared/ui/Typography";
+import { getPhotoUrl } from "@/utils/getPhotoUrl";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 
+type ParamValue = string | string[] | undefined;
+
+const toString = (value: ParamValue) => {
+  if (!value) return undefined;
+  return Array.isArray(value) ? value[0] : value;
+};
+
 export default function NewTip() {
   const router = useRouter();
-  const params = useLocalSearchParams<{
-    id?: string;
-    title?: string;
-    description?: string;
-  }>();
-  const adviceId = params.id ? String(params.id) : undefined;
+  const params = useLocalSearchParams();
+  const adviceId = toString(params.id);
 
-  const [title, setTitle] = useState(params.title ? String(params.title) : "");
-  const [description, setDescription] = useState(
-    params.description ? String(params.description) : ""
-  );
-  const [photo, setPhoto] = useState<{
-    uri: string;
-    name: string;
-    type: string;
-  } | null>(null);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [photo, setPhoto] = useState<AdvicePhoto | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
-  const createAdviceMutation = useCreateAdvice();
-  const updateAdviceMutation = useUpdateAdvice();
+  const adviceQuery = useAdvice(adviceId ?? "");
+  const createAdvice = useCreateAdvice();
+  const updateAdvice = useUpdateAdvice();
 
   const isEditing = Boolean(adviceId);
+  const isSaving = createAdvice.isPending || updateAdvice.isPending;
+
+  const isPrefilledRef = useRef(false);
+  const isAdvicePrefilledRef = useRef(false);
+
+  const fallbackTitle = useMemo(() => toString(params.title) ?? "", [params]);
+  const fallbackDescription = useMemo(
+    () => toString(params.description) ?? "",
+    [params]
+  );
+  const fallbackPhotoUrl = useMemo(() => toString(params.photoUrl), [params]);
 
   useEffect(() => {
-    // Пока нет отдельного запроса по id, данные для редактирования
-    // разумно будет подтягивать с пред. экрана или добавить хук useAdvice(id)
-    // Здесь оставим заглушку: если пришли через редактирование, текст можно ввести заново.
-  }, [adviceId]);
+    if (adviceQuery.data && !isAdvicePrefilledRef.current) {
+      setTitle(adviceQuery.data.title);
+      setDescription(adviceQuery.data.description);
+      if (!photo) {
+        setPhotoPreview(
+          adviceQuery.data.photoUrl
+            ? getPhotoUrl(adviceQuery.data.photoUrl)
+            : null
+        );
+      }
+      isAdvicePrefilledRef.current = true;
+      isPrefilledRef.current = true;
+    }
+  }, [adviceQuery.data, photo]);
 
-  const handlePickPhoto = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-    });
+  useEffect(() => {
+    if (isPrefilledRef.current || adviceQuery.data) return;
 
-    if (result.canceled || !result.assets?.[0]?.uri) {
+    setTitle(fallbackTitle);
+    setDescription(fallbackDescription);
+    setPhotoPreview((prev) =>
+      fallbackPhotoUrl ? getPhotoUrl(fallbackPhotoUrl) : prev
+    );
+    isPrefilledRef.current = true;
+  }, [fallbackTitle, fallbackDescription, fallbackPhotoUrl, adviceQuery.data]);
+
+  const handlePickImage = async () => {
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      Alert.alert(
+        "Нет доступа",
+        "Разрешите доступ к галерее, чтобы выбрать фото"
+      );
       return;
     }
 
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets?.length) return;
+
     const asset = result.assets[0];
-    const uri = asset.uri;
-    const name = uri.split("/").pop() || "photo.jpg";
 
     setPhoto({
-      uri,
-      name,
-      type: asset.mimeType || "image/jpeg",
+      uri: asset.uri,
+      name: asset.fileName ?? "photo.jpg",
+      type: asset.mimeType ?? "image/jpeg",
+    });
+    setPhotoPreview(asset.uri);
+  };
+
+  const handleSave = () => {
+    const trimmedTitle = title.trim();
+    const trimmedDescription = description.trim();
+
+    if (!trimmedTitle || !trimmedDescription) {
+      Alert.alert("Заполните поля", "Укажите заголовок и описание");
+      return;
+    }
+
+    const payload = {
+      title: trimmedTitle,
+      description: trimmedDescription,
+      ...(photo ? { photo } : {}),
+    };
+
+    if (isEditing && adviceId) {
+      updateAdvice.mutate(
+        { id: adviceId, data: payload },
+        {
+          onSuccess: () => router.back(),
+          onError: () =>
+            Alert.alert(
+              "Ошибка",
+              "Не удалось обновить совет. Попробуйте еще раз"
+            ),
+        }
+      );
+      return;
+    }
+
+    createAdvice.mutate(payload, {
+      onSuccess: () => router.back(),
+      onError: () =>
+        Alert.alert("Ошибка", "Не удалось сохранить совет. Попробуйте еще раз"),
     });
   };
 
-  const handleSave = async () => {
-    if (!title || !description) return;
-
-    try {
-      if (isEditing && adviceId) {
-        console.log("update", photo, title, description);
-        await updateAdviceMutation.mutateAsync(
-          {
-            id: adviceId,
-            data: {
-              title,
-              description,
-              photo: photo as any,
-            },
-          },
-          {
-            onError(e) {
-              console.log("error");
-            },
-          }
-        );
-      } else {
-        console.log("create", photo, title, description);
-        await createAdviceMutation.mutateAsync({
-          title,
-          description,
-          // photo обязателен на бэке
-          photo: photo as any,
-        });
-      }
-      router.back();
-    } catch {
-      // можно вывести тост/ошибку позже
-    }
-  };
   return (
     <>
       <Stack.Screen
         options={buildDefaultHeaderOptions({
-          title: isEditing ? "Редактирование совета" : "Новый совет",
+          title: isEditing ? "Редактировать совет" : "Новый совет",
         })}
       />
       <KeyboardAvoidingView
@@ -120,56 +167,72 @@ export default function NewTip() {
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.spacer16} />
-          <Typography style={styles.label} type="default">
-            Введите заголовок:
-          </Typography>
-          <TextBox
-            placeholder="Заголовок"
-            value={title}
-            onChangeText={setTitle}
-          />
-          <View style={styles.spacer24} />
-          <Typography style={styles.label} type="default">
-            Добавьте фотографию:
-          </Typography>
-          <TouchableOpacity
-            style={styles.photoPlaceholder}
-            onPress={handlePickPhoto}
-          >
-            {photo ? (
-              <Image source={{ uri: photo.uri }} style={styles.photoPreview} />
-            ) : (
-              <View style={styles.plusWrapper}>
-                <Text style={styles.plus}>+</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-          <View style={styles.spacer24} />
-          <Typography style={styles.label} type="default">
-            Введите описание:
-          </Typography>
-          <TextBox
-            placeholder="Описание"
-            multiline
-            value={description}
-            onChangeText={setDescription}
-          />
-          <View style={{ height: 32 }} />
-          <ThemedButton
-            onPress={handleSave}
-            textAlign="center"
-            disabled={
-              !title ||
-              !description ||
-              createAdviceMutation.isPending ||
-              updateAdviceMutation.isPending
-            }
-          >
-            {createAdviceMutation.isPending || updateAdviceMutation.isPending
-              ? "Сохраняем..."
-              : "Сохранить"}
-          </ThemedButton>
+          {isEditing && adviceQuery.isLoading ? (
+            <View style={styles.loadingWrapper}>
+              <ActivityIndicator color={theme.color.background.usual} />
+              <Typography style={{ marginTop: 8 }}>
+                Загружаем данные совета...
+              </Typography>
+            </View>
+          ) : (
+            <>
+              <View style={styles.spacer16} />
+              <Typography style={styles.label} type="default">
+                Введите заголовок:
+              </Typography>
+              <TextBox
+                placeholder="Заголовок"
+                value={title}
+                onChangeText={setTitle}
+                editable={!isSaving}
+              />
+              <View style={styles.spacer24} />
+              <Typography style={styles.label} type="default">
+                Добавьте фотографию:
+              </Typography>
+              <Pressable
+                style={styles.photoPlaceholder}
+                onPress={handlePickImage}
+                disabled={isSaving}
+              >
+                {photoPreview ? (
+                  <Image
+                    source={photoPreview}
+                    style={styles.photo}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <View style={styles.plusWrapper}>
+                    <Text style={styles.plus}>+</Text>
+                  </View>
+                )}
+              </Pressable>
+              <Typography type="label" style={styles.photoHelper}>
+                Нажмите, чтобы выбрать или обновить фото
+              </Typography>
+              <View style={styles.spacer24} />
+              <Typography style={styles.label} type="default">
+                Введите описание:
+              </Typography>
+              <TextBox
+                placeholder="Описание"
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                editable={!isSaving}
+              />
+              <View style={{ height: 32 }} />
+              <ThemedButton
+                onPress={handleSave}
+                textAlign="center"
+                disabled={isSaving}
+              >
+                {isSaving ? "Сохраняем..." : "Сохранить"}
+              </ThemedButton>
+            </>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </>
@@ -190,13 +253,14 @@ const styles = StyleSheet.create({
   },
 
   photoPlaceholder: {
-    width: 140,
-    height: 140,
+    width: 160,
+    height: 160,
     borderRadius: 20,
     backgroundColor: theme.color.background.usual,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 8,
+    overflow: "hidden",
   },
   plusWrapper: {
     flex: 1,
@@ -209,11 +273,21 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontWeight: "400",
   },
-  spacer16: { height: 16 },
-  spacer24: { height: 24 },
-  photoPreview: {
+  photo: {
     width: "100%",
     height: "100%",
-    borderRadius: 20,
+  },
+  photoHelper: {
+    marginTop: 8,
+    color: theme.color.text,
+  },
+  spacer16: { height: 16 },
+  spacer24: { height: 24 },
+  loadingWrapper: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingTop: 48,
   },
 });

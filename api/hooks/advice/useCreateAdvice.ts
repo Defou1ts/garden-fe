@@ -1,6 +1,6 @@
-import { adviceApi } from '@/api/advice.api';
-import { adviceKeys } from '@/query/advice.keys';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { adviceApi } from "@/api/advice.api";
+import { adviceKeys } from "@/query/advice.keys";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export const useCreateAdvice = () => {
   const qc = useQueryClient();

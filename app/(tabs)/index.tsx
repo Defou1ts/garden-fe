@@ -9,6 +9,7 @@ import { TipsList } from "@/components/tips-list";
 import { TodayDeals } from "@/components/today-deals";
 import { RadioButtonItem } from "@/shared/ui/radio-button-group";
 import { Typography } from "@/shared/ui/Typography";
+import { getPhotoUrl } from "@/utils/getPhotoUrl";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -50,7 +51,7 @@ export default function HomeScreen() {
         <Image
           style={styles.weatherImage}
           source={
-            weatherQuery.data?.photoUrl ??
+            getPhotoUrl(weatherQuery.data?.photoUrl ?? "") ??
             require("../../assets/images/sun.png")
           }
         />

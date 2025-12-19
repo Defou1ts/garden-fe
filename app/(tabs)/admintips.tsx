@@ -81,6 +81,7 @@ export default function AdminTipsPage() {
                     id: item.id,
                     title: item.title,
                     description: item.description,
+                    photoUrl: item.photoUrl,
                   },
                 } as any)
               }

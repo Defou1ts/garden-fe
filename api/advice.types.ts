@@ -5,14 +5,16 @@ export type Advice = {
   description: string;
 };
 
+export type AdvicePhoto = {
+  uri: string;
+  name: string;
+  type: string;
+};
+
 export type CreateAdviceRequest = {
   title: string;
   description: string;
-  photo: {
-    uri: string;
-    name: string;
-    type: string;
-  };
+  photo?: AdvicePhoto;
 };
 
 export type UpdateAdviceRequest = Partial<CreateAdviceRequest>;
